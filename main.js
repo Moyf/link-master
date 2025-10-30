@@ -29,8 +29,9 @@ __export(main_exports, {
 module.exports = __toCommonJS(main_exports);
 var import_obsidian = require("obsidian");
 
-// src/plugin.ts
+// src/plugin-decorator.ts
 var import_view = require("@codemirror/view");
+var import_state = require("@codemirror/state");
 
 // src/linkDetector.ts
 var LinkDetector = class {
@@ -170,7 +171,98 @@ var LinkDetector = class {
   }
 };
 
-// src/plugin.ts
+// src/plugin-decorator.ts
+var createLinkDecoration = (linkType) => {
+  return import_view.Decoration.mark({
+    class: `link-master-active-link`,
+    attributes: {
+      "data-link-type": linkType,
+      "data-link-master": "active"
+    }
+  });
+};
+function computeLinkDecorations(state) {
+  const selection = state.selection.main;
+  const currentPos = selection.head;
+  const linkInfo = LinkDetector.detectLinkAtPosition(state.doc, currentPos);
+  if (linkInfo.isInLink && linkInfo.linkStart !== void 0 && linkInfo.linkEnd !== void 0 && linkInfo.linkType) {
+    const highlightRange = getSpecificHighlightRange(linkInfo, currentPos, state);
+    if (highlightRange) {
+      const decoration = createLinkDecoration(linkInfo.linkType);
+      return import_view.Decoration.set([decoration.range(highlightRange.from, highlightRange.to)]);
+    }
+  }
+  return import_view.Decoration.none;
+}
+var linkHighlightField = import_state.StateField.define({
+  create(state) {
+    return computeLinkDecorations(state);
+  },
+  update(decorations, tr) {
+    if (tr.selection !== tr.startState.selection) {
+      return computeLinkDecorations(tr.state);
+    }
+    return decorations.map(tr.changes);
+  },
+  provide: (f) => import_view.EditorView.decorations.from(f)
+});
+function getSpecificHighlightRange(linkInfo, cursorPos, state) {
+  if (!linkInfo.isInLink || linkInfo.linkStart === void 0 || linkInfo.linkEnd === void 0) {
+    return null;
+  }
+  if (linkInfo.linkType === "markdown") {
+    const line = state.doc.lineAt(cursorPos);
+    const lineText = line.text;
+    const linkStartInLine = linkInfo.linkStart - line.from;
+    const cursorInLine = cursorPos - line.from;
+    const markdownLinkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+    let match;
+    while ((match = markdownLinkRegex.exec(lineText)) !== null) {
+      const matchStart = match.index;
+      if (matchStart === linkStartInLine) {
+        const textStart = matchStart + 1;
+        const textEnd = matchStart + 1 + match[1].length;
+        const urlStart = matchStart + match[0].indexOf("(") + 1;
+        const urlEnd = matchStart + match[0].length - 1;
+        if (cursorInLine >= textStart && cursorInLine <= textEnd) {
+          return { from: line.from + textStart, to: line.from + textEnd };
+        } else if (cursorInLine >= urlStart && cursorInLine <= urlEnd) {
+          return { from: line.from + urlStart, to: line.from + urlEnd };
+        }
+        break;
+      }
+    }
+  } else if (linkInfo.linkType === "wiki") {
+    const line = state.doc.lineAt(cursorPos);
+    const lineText = line.text;
+    const linkStartInLine = linkInfo.linkStart - line.from;
+    const cursorInLine = cursorPos - line.from;
+    const wikiLinkRegex = /\[\[([^\]]+)\]\]/g;
+    let match;
+    while ((match = wikiLinkRegex.exec(lineText)) !== null) {
+      const matchStart = match.index;
+      if (matchStart === linkStartInLine) {
+        const contentStart = matchStart + 2;
+        const contentEnd = matchStart + match[0].length - 2;
+        const content = match[1];
+        const pipeIndex = content.indexOf("|");
+        if (pipeIndex !== -1) {
+          const targetEnd = contentStart + pipeIndex;
+          const aliasStart = contentStart + pipeIndex + 1;
+          if (cursorInLine <= targetEnd) {
+            return { from: line.from + contentStart, to: line.from + targetEnd };
+          } else {
+            return { from: line.from + aliasStart, to: line.from + contentEnd };
+          }
+        } else {
+          return { from: line.from + contentStart, to: line.from + contentEnd };
+        }
+        break;
+      }
+    }
+  }
+  return { from: linkInfo.linkStart, to: linkInfo.linkEnd };
+}
 var LinkMasterPlugin = class {
   constructor(view) {
     this.mainPlugin = null;
@@ -187,13 +279,15 @@ var LinkMasterPlugin = class {
   /**
    * CodeMirror 自动调用此方法响应编辑器状态变化
    */
-  update() {
+  update(update) {
     if (!this.mainPlugin)
       return;
-    this.checkCursorPosition();
+    if (update.selectionSet) {
+      this.checkCursorPosition();
+    }
   }
   /**
-   * 检查光标位置并打印信息
+   * 检查光标位置并输出日志
    */
   checkCursorPosition() {
     const state = this.view.state;
@@ -238,13 +332,18 @@ var LinkMasterPlugin = class {
     this.mainPlugin = null;
   }
 };
-var linkMasterPlugin = import_view.ViewPlugin.fromClass(LinkMasterPlugin);
+var linkMasterViewPlugin = import_view.ViewPlugin.fromClass(LinkMasterPlugin);
+var linkMasterExtensions = [
+  linkHighlightField,
+  linkMasterViewPlugin
+];
+var linkMasterPlugin = linkMasterViewPlugin;
 
 // main.ts
 var LinkMaster = class extends import_obsidian.Plugin {
   async onload() {
     console.log("Loading Link Master plugin");
-    this.registerEditorExtension(linkMasterPlugin);
+    this.registerEditorExtension(linkMasterExtensions);
     this.app.workspace.onLayoutReady(() => {
       this.setupEditorPlugin(this.app.workspace.getMostRecentLeaf());
     });

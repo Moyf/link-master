@@ -1,0 +1,72 @@
+/* Link Master Plugin Styles */
+
+/* 基础高亮样式 - 应用到 CodeMirror 链接元素 */
+.link-master-active-link {
+  background-color: rgba(255, 255, 0, 0.2) !important;
+  border-radius: 3px;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 0, 0.4);
+  transition: all 0.15s ease-in-out;
+}
+
+/* Wiki 链接高亮 (蓝色) */
+.link-master-active-link[data-link-type="wiki"] {
+  background-color: rgba(100, 200, 255, 0.25) !important;
+  box-shadow: 0 0 0 1px rgba(100, 200, 255, 0.5);
+  color: inherit;
+}
+
+/* Markdown 链接高亮 (橙色) */
+.link-master-active-link[data-link-type="markdown"] {
+  background-color: rgba(255, 150, 100, 0.25) !important;
+  box-shadow: 0 0 0 1px rgba(255, 150, 100, 0.5);
+  color: inherit;
+}
+
+/* 暗色主题适配 */
+.theme-dark .link-master-active-link {
+  background-color: rgba(255, 255, 100, 0.15) !important;
+  box-shadow: 0 0 0 1px rgba(255, 255, 100, 0.3);
+}
+
+.theme-dark .link-master-active-link[data-link-type="wiki"] {
+  background-color: rgba(100, 200, 255, 0.15) !important;
+  box-shadow: 0 0 0 1px rgba(100, 200, 255, 0.3);
+}
+
+.theme-dark .link-master-active-link[data-link-type="markdown"] {
+  background-color: rgba(255, 150, 100, 0.15) !important;
+  box-shadow: 0 0 0 1px rgba(255, 150, 100, 0.3);
+}
+
+/* 针对特定的 CodeMirror 元素类型优化 */
+.cm-link.link-master-active-link,
+.cm-url.link-master-active-link,
+.cm-hmd-internal-link.link-master-active-link {
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
+}
+
+/* 悬停效果增强 */
+.link-master-active-link:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.theme-dark .link-master-active-link:hover {
+  box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
+}
+
+/* 针对不同链接部分的细化样式 */
+.cm-formatting-link.link-master-active-link {
+  opacity: 0.7;
+  font-size: 0.9em;
+}
+
+/* 确保文本可读性 */
+.link-master-active-link * {
+  color: inherit !important;
+}
