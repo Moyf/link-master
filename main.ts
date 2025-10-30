@@ -1,14 +1,14 @@
 import { Plugin, WorkspaceLeaf, MarkdownView } from "obsidian";
 import { EditorView } from "@codemirror/view";
-import { linkMasterPlugin } from "./src/plugin";
+import { linkMasterExtensions, linkMasterPlugin } from "./src/plugin-decorator";
 
 export default class LinkMaster extends Plugin {
 	
 	async onload() {
 		console.log("Loading Link Master plugin");
 		
-		// 注册 CodeMirror 扩展
-		this.registerEditorExtension(linkMasterPlugin);
+		// 注册 CodeMirror 扩展（包含状态字段和视图插件）
+		this.registerEditorExtension(linkMasterExtensions);
 		
 		// 监听活动叶子变化，确保插件正确初始化
 		this.app.workspace.onLayoutReady(() => {
